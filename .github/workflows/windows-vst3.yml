@@ -1,4 +1,4 @@
-name: Build Paramedic EQ - Windows VST3
+name: Build Paramedic EQ - Windows VST3 + Beta Installer
 
 on:
   push:
@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   build-windows-vst3:
-    name: Windows VST3 Build
+    name: Windows VST3 + Beta Installer
     runs-on: windows-2022
 
     steps:
@@ -24,7 +24,6 @@ jobs:
         run: |
           Write-Host "Searching for Visual Studio 2022..."
 
-          # Locate vswhere.exe without assuming a single installation path.
           $vswhereCandidates = @(
             "$env:ProgramFiles\Microsoft Visual Studio\Installer\vswhere.exe",
             "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
@@ -36,7 +35,6 @@ jobs:
 
           if (-not $vswherePath) {
             $vswhereCommand = Get-Command vswhere.exe -ErrorAction SilentlyContinue
-
             if ($vswhereCommand) {
               $vswherePath = $vswhereCommand.Source
             }
@@ -44,13 +42,6 @@ jobs:
 
           if (-not $vswherePath) {
             Write-Error "vswhere.exe was not found on the Windows runner."
-            Write-Host "Checking Visual Studio installation directories..."
-
-            Get-ChildItem "$env:ProgramFiles\Microsoft Visual Studio" `
-              -Directory `
-              -ErrorAction SilentlyContinue |
-              Select-Object FullName
-
             exit 1
           }
 
@@ -67,8 +58,7 @@ jobs:
             exit 1
           }
 
-          Write-Host "Visual Studio installation found:"
-          Write-Host $installationPath
+          Write-Host "Visual Studio installation found: $installationPath"
 
       - name: Configure CMake
         run: |
@@ -95,40 +85,125 @@ jobs:
 
           if (-not $vst3) {
             Write-Host "VST3 output was not found."
-            Write-Host "Build tree:"
-
             Get-ChildItem "$env:GITHUB_WORKSPACE/build" -Recurse |
               Select-Object FullName
-
             exit 1
           }
 
           "VST3_PATH=$($vst3.FullName)" |
-            Out-File `
-              -FilePath $env:GITHUB_ENV `
-              -Encoding utf8 `
-              -Append
+            Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-          Write-Host "Found VST3:"
-          Write-Host $vst3.FullName
+          Write-Host "Found VST3: $($vst3.FullName)"
 
       - name: Package VST3
         shell: pwsh
         run: |
-          New-Item `
-            -ItemType Directory `
-            -Force `
-            -Path dist |
-            Out-Null
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
 
           Compress-Archive `
             -Path "$env:VST3_PATH" `
             -DestinationPath "dist/Paramedic-EQ-v2.0.5-Windows-VST3.zip" `
             -Force
 
-      - name: Upload VST3 artifact
+      - name: Locate Inno Setup
+        shell: pwsh
+        run: |
+          $isccCandidates = @(
+            "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe",
+            "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+          )
+
+          $iscc = $isccCandidates |
+            Where-Object { Test-Path $_ } |
+            Select-Object -First 1
+
+          if (-not $iscc) {
+            $command = Get-Command iscc.exe -ErrorAction SilentlyContinue
+            if ($command) {
+              $iscc = $command.Source
+            }
+          }
+
+          if (-not $iscc) {
+            Write-Host "Inno Setup was not found. Installing it with Chocolatey..."
+            choco install innosetup --no-progress -y
+            $iscc = "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe"
+          }
+
+          if (-not (Test-Path $iscc)) {
+            Write-Error "Inno Setup compiler (ISCC.exe) could not be found."
+            exit 1
+          }
+
+          "ISCC_PATH=$iscc" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "Using Inno Setup: $iscc"
+
+      - name: Build Beta EXE Installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+
+          $vst3Source = $env:VST3_PATH.Replace('\', '/')
+
+          $iss = @"
+          #define MyAppName "Paramedic EQ"
+          #define MyAppVersion "2.0.5"
+          #define MyAppPublisher "Dvinesoul"
+          #define MyAppExeName "Paramedic EQ"
+          #define Vst3Source "$vst3Source"
+
+          [Setup]
+          AppId={{8D0A5A90-7B0E-4F64-9E2B-6D8B0F6C2B11}
+          AppName={#MyAppName}
+          AppVersion={#MyAppVersion}
+          AppVerName={#MyAppName} v{#MyAppVersion} Beta
+          AppPublisher={#MyAppPublisher}
+          DefaultDirName={commoncf}\VST3\Paramedic EQ.vst3
+          DisableProgramGroupPage=yes
+          PrivilegesRequired=admin
+          ArchitecturesAllowed=x64compatible
+          ArchitecturesInstallIn64BitMode=x64compatible
+          LicenseFile=LICENSE-BETA.txt
+          OutputDir=dist
+          OutputBaseFilename=Paramedic-EQ-v2.0.5-Beta-Setup
+          Compression=lzma2
+          SolidCompression=yes
+          WizardStyle=modern
+          UninstallDisplayName=Paramedic EQ v2.0.5 Beta
+          Uninstallable=yes
+
+          [Files]
+          Source: "{#Vst3Source}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+          [UninstallDelete]
+          Type: filesandordirs; Name: "{app}"
+          "@
+
+          $issPath = Join-Path $env:GITHUB_WORKSPACE "ParamedicEQ-Beta-Installer.iss"
+          $iss | Set-Content -Path $issPath -Encoding UTF8
+
+          Write-Host "Compiling beta installer..."
+          & $env:ISCC_PATH $issPath
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Inno Setup failed to build the beta installer."
+            exit 1
+          }
+
+          $installer = "dist/Paramedic-EQ-v2.0.5-Beta-Setup.exe"
+          if (-not (Test-Path $installer)) {
+            Write-Error "Beta installer EXE was not created."
+            exit 1
+          }
+
+          Write-Host "Created: $installer"
+          Get-Item $installer | Select-Object FullName, Length
+
+      - name: Upload VST3 and Beta EXE
         uses: actions/upload-artifact@v4
         with:
-          name: Paramedic-EQ-v2.0.5-Windows-VST3
-          path: dist/Paramedic-EQ-v2.0.5-Windows-VST3.zip
+          name: Paramedic-EQ-v2.0.5-Beta-Windows
+          path: |
+            dist/Paramedic-EQ-v2.0.5-Windows-VST3.zip
+            dist/Paramedic-EQ-v2.0.5-Beta-Setup.exe
           if-no-files-found: error
