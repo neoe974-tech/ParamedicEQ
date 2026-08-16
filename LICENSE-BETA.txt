@@ -1,0 +1,25 @@
+PARAMEDIC EQ v2.0.5 BETA TESTING LICENSE
+
+Copyright (c) 2026 Neo Emmanuel / Dvinesoul.
+
+BETA STATUS
+Paramedic EQ v2.0.5 is a TESTING / BETA release. It is provided so testers can evaluate the plugin, identify bugs, report compatibility problems, and provide feedback before a stable public release.
+
+PERMITTED USE
+- You may install and use this beta release for personal testing and evaluation.
+- You may test it in compatible Windows DAWs and report bugs or performance issues.
+- You may share feedback and test results with the developer.
+
+RESTRICTIONS
+- This beta is not a final release and may contain bugs, unfinished features, or compatibility problems.
+- Do not sell, sublicense, repackage, modify, reverse engineer, or redistribute the plugin or installer as your own product.
+- Do not claim ownership of Paramedic EQ or its source code, artwork, presets, or other included assets.
+- Do not distribute modified copies without written permission from the developer.
+
+NO WARRANTY
+This beta software is provided "AS IS" for testing purposes, without warranties of any kind. The developer is not responsible for data loss, project corruption, system problems, or other damage resulting from use of the beta release. Test important projects with appropriate backups.
+
+FEEDBACK
+Please report bugs, crashes, compatibility issues, and useful suggestions to the developer. Beta feedback may be used to improve future versions of Paramedic EQ.
+
+By installing or using this beta release, you acknowledge that it is a testing version and agree to the terms above.
