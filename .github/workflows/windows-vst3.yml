@@ -13,11 +13,28 @@ permissions:
 jobs:
   build-windows-vst3:
     name: Windows VST3 Build
-    runs-on: windows-latest
+    # Pin the runner to the image that includes Visual Studio 2022.
+    # windows-latest can move to a newer Windows image where the
+    # Visual Studio 17 2022 generator is not available.
+    runs-on: windows-2022
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Verify Visual Studio 2022
+        shell: pwsh
+        run: |
+          Write-Host "Visual Studio installations:"
+          & "${env:ProgramFiles}\Microsoft Visual Studio\Installer\vswhere.exe" `
+            -latest `
+            -products * `
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+            -property installationPath
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Visual Studio 2022 C++ tools were not found."
+            exit 1
+          }
 
       - name: Configure CMake
         run: cmake -S ParamedicEQ-v2 -B build -G "Visual Studio 17 2022" -A x64
