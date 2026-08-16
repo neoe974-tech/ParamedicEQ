@@ -1,0 +1,6 @@
+Paramedic EQ 2.0.5
+
+VST3: C:\\Program Files\\Common Files\\VST3\\Paramedic EQ.vst3
+Library: %USERPROFILE%\\Documents\\Paramedic EQ\\Library\\
+Presets: %USERPROFILE%\\Documents\\Paramedic EQ\\Library\\Presets\\
+The plugin defaults its preset Open/Save dialogs to the Presets folder.

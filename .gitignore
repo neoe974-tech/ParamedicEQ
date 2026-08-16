@@ -1,0 +1,10 @@
+build/
+.vscode/
+.idea/
+*.user
+*.suo
+*.vcxproj.user
+CMakeCache.txt
+CMakeFiles/
+*.log
+.DS_Store
